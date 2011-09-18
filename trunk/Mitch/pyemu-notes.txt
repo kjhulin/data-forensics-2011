@@ -1,0 +1,42 @@
+To get library calls to work :
+
+Python>emu.os.get_library_address('memset')   <---- doesn't work before
+False
+
+Python>emu.os.add_library('msvcrt', 'memset')
+True
+
+Python>hex(emu.os.get_library_address('memset'))   <----- works after add_library call
+0x76409790
+
+
+Python>emu.set_memory(0x0040613C, 0x76409790, size=4)
+True
+	- 0x0040613C is the line in IDA where it shows the import address of memset
+	- "0040613C  memset msvcrt"
+
+
+
+
+Python>emu.get_disasm()     <---- the actual call
+call 0x401c90
+Python>emu.execute()
+True
+Python>emu.get_disasm()     <---- jmps to the library
+jmp [0x40613c]
+Python>emu.execute()
+True
+Python>emu.get_disasm()     <---- hmm, doesn't show the instruction? (though no memory is loaded for it)
+False
+Python>emu.execute()        <---- ...?
+[*] Need a handler for [{'name': 'memset', 'address': 1983944592}]
+False
+
+
+So, adding the library by itself still fails. Adding the library + setting the memory at the library jmp to the address returned from get_library_address doesn't cause it to crash saying :
+
+raise RuntimeError, "The memory requested was invalid"
+
+but it does say "Need handler for..."
+
+Can see the source code for this error message : http://code.google.com/p/pyemu/source/browse/trunk/PyCPU.py?r=18
